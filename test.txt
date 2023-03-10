@@ -1,2 +1,3 @@
+#include "lib/holos"
 print("fuck you")
 holoCreat(1,"hqsphere",entity():pos())
