@@ -1,0 +1,275 @@
+@name Retards radio mk.2
+@inputs 
+@outputs 
+@persist [Settings,Names,Urls,Vars]:table Player:webaudio [R1]:ranger
+@trigger 
+@strict
+#include "lib/vars"
+#include "lib/gitfile"
+
+if(first()||dupefinished()){
+    dsSetScope(2)
+    dsJoinGroup(hash(getCode()):toString())
+    Vars=table()
+    if(E:model()=="models/sligwolf/grocel/radio/jukebox.mdl"){
+        Vars["Height",number]=32
+    }
+    else{
+        Vars["Height",number]=45
+    }
+    if(gTable("radiosettings"+E:id():toString(),0):toTable():count()>0){
+        Settings=gTable("radiosettings"+E:id():toString(),0):toTable()
+    }
+    else{
+        Settings=table()
+        Settings["Volume",number]=100
+        Settings["Radius",number]=250
+        Settings["3D",number]=1
+        Settings["Playbackrate",number]=1
+        Settings["Playlist",string]="https://raw.githubusercontent.com/anceient/webaudio-playlist/main/Urlsnames.txt"
+        Settings["Filepath",string]="Retardradio/retardsplaylist.txt"
+        Settings["PlayOnLoad",number]=0
+    }
+    Names=table()
+    Urls=table()
+    Player=nowebaudio()
+    Vars["wait",number]=0
+    gitcheck(Settings["Playlist",string],Settings["Filepath",string])
+}
+
+function playsong(Id:number){
+    Player:destroy()
+    Player=webAudio(Urls[Id,string])
+    Player:setPos(E:toWorld(vec(0,0,0)))
+    Player:setParent(E)
+    Player:setVolume(Settings["Volume",number])
+    Player:setRadius(Settings["Radius",number])
+    Player:set3DEnabled(Settings["3D",number])
+    Player:setPlaybackRate(Settings["Playbackrate",number])
+    Player:play()
+    Vars["wait",number]=1
+}
+
+function string getwatime(N:number){
+    H=floor(mod(N,86400)/3600)
+    M=floor(mod(N,3600)/60)
+    S=floor(mod(N,60))
+    if(H<10){Hrs="0"+H:toString()}else{Hrs=H:toString()}
+    if(M<10){Min="0"+M:toString()}else{Min=M:toString()}
+    if(S<10){Sec="0"+S:toString()}else{Sec=S:toString()}
+    return Hrs+":"+Min+":"+Sec
+}
+switch(clkName()){
+    case "gitcheck",
+        hint("Playlist loaded.",3)
+        Urls=GITFILELIB_output["Urls",table]
+        Names=GITFILELIB_output["Names",table]
+        Vars["Id",number]=randint(Urls:count())
+        if(Settings["PlayOnLoad",number]==1){
+            playsong(Vars["Id",number])
+            timer("main",250)
+        }
+    break
+    case "main",
+        if(Player:getLength()!=-1){
+            setName("Retards radio:["+Vars["Id",number]:toString()+"]"+Names[Vars["Id",number],string]+"["+getwatime(Player:getTime())+" | "+getwatime(Player:getLength())+"]")
+            Vars["wait",number]=0
+        }
+        if(Player:getTime()==Player:getLength()&(Vars["wait",number]!=1)){
+            Vars["Id",number]=Vars["Id",number]+1
+            if(Vars["Id",number]>Urls:count()){
+                Vars["Id",number]=1
+                playsong(Vars["Id",number])
+            }
+            else{
+                playsong(Vars["Id",number])
+            }
+        }
+        if(dsClk() & dsGetArray()){
+        #local ARR = array("msg",entity():id():toString(),owner():name(),Output:sub(5))
+        if(dsGetArray()[1,string] == "CopyThatFloppy" & Vars["Drm",number]==1){
+            Vars["Drm",number]=0
+            E:propNotSolid(0)
+        }
+    }
+        timer("main",250)
+    break
+    case "bc",
+        E:constraintBreak()
+        timer("bc",50)
+    break
+    case "hover",
+        rangerFilter(E)
+        R1=rangerOffset(100,E:toWorld(vec(0,0,0)),vec(0,0,-1))
+        #laserholo(1,E:toWorld(vec(0,0,E:height()/2)),R1:position())
+        if(R1:distance()<Vars["Height",number]){
+            E:applyForce(vec(0,0,((((R1:position()+vec(0,0,Vars["Height",number]):z()-E:pos():z())*10)-E:vel():z())*E:mass()):z()))
+        }
+        Vars["Hoverang",angle]=(((ang(0,0,0)-E:angles())*10)-E:angVel())*E:mass()
+        E:applyAngForce(ang((Vars["Hoverang",angle]):pitch(),0,(Vars["Hoverang",angle]):roll()))
+        timer("hover",1)
+    break
+    case "spin",
+        Vec=((((Vars["Hovervec",vector]-E:pos())*10)-E:vel())*E:mass())
+        E:applyForce(Vec)
+        Vars["Spinang",angle]=(((ang(0,0,0)-E:angles())*10)-E:angVel())*E:mass()
+        E:applyAngForce(ang((Vars["Spinang",angle]):pitch(),0,(Vars["Spinang",angle]):roll()))
+        if(E:angVel():yaw()<ang(0,100,0):yaw()&(E:model()=="models/sligwolf/grocel/radio/jukebox.mdl")){
+            E:applyAngForce(((ang(0,15,0)*5)-E:angVel())*E:mass())
+        }
+        elseif(E:angVel():yaw()<ang(0,100,0):yaw()&(E:model()=="models/vj_props/radio.mdl")){
+            E:applyAngForce(ang(0,15,0))
+        }
+        timer("spin",1)
+    break
+}
+
+event chat(Chte:entity,_:string,_:number){
+    if(Chte&T){
+        hideChat(1)
+        switch(Comm){
+            case "set",
+                if(Args[1,string]=="radius"){
+                    Settings["Radius",number]=Args[2,string]:toNumber()
+                    hint("Radius set to: "+Args[2,string],3)
+                    Player:setRadius(Args[2,string]:toNumber())
+                    Player:update()
+                }
+                elseif(Args[1,string]=="volume"){
+                    Settings["Volume",number]=Args[2,string]:toNumber()
+                    hint("Volume set to: "+Args[2,string],3)
+                    Player:setVolume(Args[2,string]:toNumber())
+                    Player:update()
+                }
+                elseif(Args[1,string]=="3d"){
+                    Settings["3D",number]=Args[2,string]:toNumber()
+                    hint("3D set to: "+Args[2,string],3)
+                    Player:set3DEnabled(Args[2,string]:toNumber())
+                    Player:update()
+                }
+                elseif(Args[1,string]=="playbackrate"){
+                    Settings["Playbackrate",number]=Args[2,string]:toNumber()
+                    hint("Playbackrate set to: "+Args[2,string],3)
+                    Player:setPlaybackRate(Args[2,string]:toNumber())
+                    Player:update()
+                }
+                elseif(Args[1,string]=="playlist"){
+                    if(Args[2,string]=="original"){
+                        Settings["Playlist",string]="https://raw.githubusercontent.com/anceient/webaudio-playlist/main/Urlsnames.txt"
+                        Settings["Filepath",string]="Retardradio/retardsplaylist.txt"
+                        gitcheck(Settings["Playlist",string],Settings["Filepath",string])
+                        hint("Playing original playlist.",3)
+                    }
+                    elseif(Args[2,string]=="clean"){
+                        Settings["Playlist",string]="https://raw.githubusercontent.com/anceient/webaudio-playlist/main/retardsclean.txt"
+                        Settings["Filepath",string]="Retardradio/retardsclean.txt"
+                        gitcheck(Settings["Playlist",string],Settings["Filepath",string])
+                        hint("Playing clean playlist.",3)
+                    }
+                    else{
+                        print("melt")
+                    }
+                }
+            break
+            case "drm",
+                E:propFreeze(1)
+                Vars["Drm",number]=!Vars["Drm",number]
+                if(Vars["Drm",number]){
+                    E:propNotSolid(1)
+                    hint("Denuvo Activated!",3)
+                }
+                else{
+                    E:propNotSolid(0)
+                    hint("Denuvo cracked!",3)
+                }
+            break
+            case "bc",
+                Vars["Bc",number]=!Vars["Bc",number]
+                if(Vars["Bc",number]){
+                    timer("bc",50)
+                    hint("The Radio will not be constrained",3)
+                }
+                else{
+                    stoptimer("bc")
+                    hint("The Radio can be constrained",3)
+                }
+            break
+            case "song",
+                local Lid=clamp(Args[1,string]:toNumber(),1,Urls:count())
+                Vars["Id",number]=Lid
+                hint("Now playing: "+Names[Lid,string],3)
+                playsong(Vars["Id",number])
+            break
+            case "next",
+                #local Lid=clamp(Args[1,string]:toNumber(),1,Urls:count())
+                Vars["Id",number]=Vars["Id",number]+1
+                hint("Now playing: "+Names[Vars["Id",number],string],3)
+                playsong(Vars["Id",number])
+            break
+            case "spin",
+                Vars["Spinof",number]=!Vars["Spinof",number]
+                if(Vars["Spinof",number]==1){
+                    Vars["Hovervec",vector]=E:pos()
+                    stoptimer("hover")
+                    Vars["Hover",number]=0
+                    timer("spin",1)
+                    hint("The Radio will spin in place",3)
+                }
+                else{
+                    stoptimer("spin")
+                    hint("I move now",3)
+                }
+            break
+            case "hover",
+                Vars["Hover",number]=!Vars["Hover",number]
+                if(Vars["Hover",number]){
+                    hint("Radio hovering!",3)
+                    stoptimer("spin")
+                    Vars["Spinof",number]=0
+                    timer("hover",1)
+                }
+                else{
+                    hint("Rover falling!",3)
+                    stoptimer("hover")
+                }
+            break
+            case "hoverheight",
+                Vars["Height",number]=Args[1,string]:toNumber()
+                hint("Hover Height:"+Args[1,string],3)
+            break
+            case "stopfloat",
+                stoptimer("spin")
+                stoptimer("hover")
+                Vars["Hover",number]=0
+                Vars["Spinof",number]=0
+                hint("All applyforce operations have been halted.",3)
+            break
+            case "printdebug",
+                print(_HUD_PRINTCONSOLE,"Settings======================================================================================")
+                print(_HUD_PRINTCONSOLE,Settings:toString())
+                print(_HUD_PRINTCONSOLE,"Vars==========================================================================================")
+                print(_HUD_PRINTCONSOLE,Vars:toString())
+            break
+            case "hash",
+                print(hash(getCode()):toString())
+            break
+            case "resume",
+                Player:play()
+                hint("Radio resumed.",3)
+            break
+            case "pause",
+                Player:pause()
+                hint("Radio paused.",3)
+            break
+            case "helpradio",
+                print("/set<radius|volume|3d|playbackrate|playlist<original|clean>>\n/drm\n/bc(Toggle constraint breaker)\n/song<number>\n/next\n/hover\n/spin\n/hoverheight<number>\n/stopfloat(Stops both hover and spin)\n/printdebug\n/hash\n/resume\n/pause\n/printsongs")
+            break
+            case "printsongs",
+                for(I=1,(Names:toString():length()/249)+1){
+                    print(_HUD_PRINTCONSOLE,Names:toString():sub((I-1)*249,clamp(249*I,1,Names:toString():length())))
+                }
+                hint("Songs printed to console.",3)
+            break
+        }
+    }
+}
