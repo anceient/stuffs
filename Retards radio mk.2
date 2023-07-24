@@ -4,6 +4,7 @@
 @persist [Settings,Names,Urls,Vars]:table Player:webaudio [R1]:ranger
 @trigger 
 @strict
+@model models/vj_props/radio.mdl
 #include "lib/vars"
 #include "lib/gitfile"
 
@@ -28,12 +29,13 @@ if(first()||dupefinished()){
         Settings["Playbackrate",number]=1
         Settings["Playlist",string]="https://raw.githubusercontent.com/anceient/webaudio-playlist/main/Urlsnames.txt"
         Settings["Filepath",string]="Retardradio/retardsplaylist.txt"
-        Settings["PlayOnLoad",number]=0
+        Settings["PlayOnLoad",number]=1
     }
     Names=table()
     Urls=table()
     Player=nowebaudio()
     Vars["wait",number]=0
+    Vars["tempcounter",number] = 0
     gitcheck(Settings["Playlist",string],Settings["Filepath",string])
 }
 
@@ -121,6 +123,44 @@ switch(clkName()){
             E:applyAngForce(ang(0,15,0))
         }
         timer("spin",1)
+    break
+    case "printsongs",
+        Vars["songPcont",number] = Vars["songPcont",number]+8
+        Vars["tempcounter",number] = Vars["tempcounter",number]+1
+        local C = Vars["songPcont",number]
+        local C2 = Vars["tempcounter",number]
+        local Str = ""
+        if(Names[C,string]){
+            Str = format("=%d=\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n",C2,Names[C-7,string],C-7,Names[C-6,string],C-6,Names[C-5,string],C-5,Names[C-4,string],C-4,Names[C-3,string],C-3,Names[C-2,string],C-2,Names[C-1,string],C-1,Names[C,string],C)
+        }
+        elseif(Names[C-1,string]){
+            Str = format("=%d=\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n",C2,Names[C-7,string],C-7,Names[C-6,string],C-6,Names[C-5,string],C-5,Names[C-4,string],C-4,Names[C-3,string],C-3,Names[C-2,string],C-2,Names[C-1,string],C-1)
+        }
+        elseif(Names[C-2,string]){
+            Str = format("=%d=\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n",C2,Names[C-7,string],C-7,Names[C-6,string],C-6,Names[C-5,string],C-5,Names[C-4,string],C-4,Names[C-3,string],C-3,Names[C-2,string],C-2)
+        }
+        elseif(Names[C-3,string]){
+            Str = format("=%d=\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n",C2,Names[C-7,string],C-7,Names[C-6,string],C-6,Names[C-5,string],C-5,Names[C-4,string],C-4,Names[C-3,string],C-3)
+        }
+        elseif(Names[C-4,string]){
+            Str = format("=%d=\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n",C2,Names[C-7,string],C-7,Names[C-6,string],C-6,Names[C-5,string],C-5,Names[C-4,string],C-4)
+        }
+        elseif(Names[C-5,string]){
+            Str = format("=%d=\n[%s,%d]\n\n[%s,%d]\n\n[%s,%d]\n",C2,Names[C-7,string],C-7,Names[C-6,string],C-6,Names[C-5,string],C-5)
+        }
+        elseif(Names[C-6,string]){
+            Str = format("=%d=\n[%s,%d]\n\n[%s,%d]\n",C2,Names[C-7,string],C-7,Names[C-6,string],C-6)
+        }
+        elseif(Names[C-7,string]){
+            Str = format("=%d=\n[%s,%d]\n",C2,Names[C-7,string],C-7)
+        }
+        print(_HUD_PRINTCONSOLE,Str)
+        if(C<Names:count()){
+            timer("printsongs",20)
+        }
+        else{
+            hint("Printed songs to console",3)
+        }
     break
 }
 
@@ -265,10 +305,12 @@ event chat(Chte:entity,_:string,_:number){
                 print("/set<radius|volume|3d|playbackrate|playlist<original|clean>>\n/drm\n/bc(Toggle constraint breaker)\n/song<number>\n/next\n/hover\n/spin\n/hoverheight<number>\n/stopfloat(Stops both hover and spin)\n/printdebug\n/hash\n/resume\n/pause\n/printsongs")
             break
             case "printsongs",
-                for(I=1,(Names:toString():length()/249)+1){
+                #[for(I=1,(Names:toString():length()/249)+1){
+                    #print(format("{%s,%d}",Tab1[2,string],2))
                     print(_HUD_PRINTCONSOLE,Names:toString():sub((I-1)*249,clamp(249*I,1,Names:toString():length())))
-                }
-                hint("Songs printed to console.",3)
+                }]#
+                timer("printsongs",50)
+                Vars["songPcont",number]=0
             break
         }
     }
