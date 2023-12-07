@@ -11,6 +11,7 @@
 #endif
 
 if(first()||dupefinished()){
+    hint("type /helpradio to see a list of commands",3)
     dsSetScope(2)
     dsJoinGroup(hash(getCode()):toString())
     Vars=table()
@@ -353,7 +354,7 @@ event chat(Chte:entity,_:string,_:number){
                 hint("Radio paused.",3)
             break
             case "helpradio",
-                print("/set<radius|volume|3d|playbackrate|playlist<original|clean>>\n/drm\n/bc(Toggle constraint breaker)\n/song<number>\n/next\n/hover\n/spin\n/hoverheight<number>\n/stopfloat(Stops both hover and spin)\n/printdebug\n/hash\n/resume\n/pause\n/printsongs")
+                print("/set<radius|volume|3d|playbackrate|playlist<original|clean>>\n/drm\n/bc(Toggle constraint breaker)\n/song<number>\n/next\n/hover\n/spin\n/hoverheight<number>\n/stopfloat(Stops both hover and spin)\n/printdebug\n/hash\n/resume\n/pause\n/printsongs\n/rui (vgui)")
             break
             case "printsongs",
                 #[for(I=1,(Names:toString():length()/249)+1){
@@ -363,7 +364,7 @@ event chat(Chte:entity,_:string,_:number){
                 timer("printsongs",50)
                 Vars["songPcont",number]=0
             break
-            case "ramenu2",
+            case "rui",
                 #ifdef dframe(number)
                 DFs["Main",dframe]:setVisible(1)
                 DFs["Main",dframe]:modify()
