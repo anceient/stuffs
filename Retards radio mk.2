@@ -1,12 +1,14 @@
 @name Retards radio mk.2
 @inputs 
 @outputs 
-@persist [Settings,Names,Urls,Vars]:table Player:webaudio [R1]:ranger
+@persist [Settings,Names,Urls,Vars,DFs,Btns,Dlvs,Dmisc]:table Player:webaudio [R1]:ranger [Time]:number
 @trigger 
-@strict
 @model models/vj_props/radio.mdl
-#include "lib/vars"
 #include "lib/gitfile"
+#include "lib/vars"
+#ifdef dframe(number)
+    #include "lib/vgui"
+#endif
 
 if(first()||dupefinished()){
     dsSetScope(2)
@@ -37,9 +39,47 @@ if(first()||dupefinished()){
     Vars["wait",number]=0
     Vars["tempcounter",number] = 0
     gitcheck(Settings["Playlist",string],Settings["Filepath",string])
+    
+    DFs=table() if(DFs){}
+    Btns=table() if(Btns){}
+    Dlvs=table() if(Dlvs){}
+    Dmisc=table() if(Dmisc){}
+    #ifdef dframe(number)
+        DFs["Main",dframe] = newmenu2(1,"Radio",0,0,0)
+        Btns["close",dbutton] = newbutton(2,1,"",vec2(DFs["Main",dframe]:getWidth(owner())-21,4),vec2(17,17))
+        
+        Dlvs["Songs",dlistview] = newlist(3,1,"Songs",vec2(2,23),vec2(130,150),130)
+        Btns["Play",dbutton] = newbutton(4,1,"Play",vec2(2,178),vec2(130,20))
+        
+        Dmisc["volume",dtextentry] = newtext(5,1,"Volume",vec2(DFs["Main",dframe]:getWidth(O)-210,30),vec2(80,20))
+        Dmisc["volume",dtextentry]:setNumeric(1)
+        Dmisc["volume",dtextentry]:modify()
+        Dmisc["radius",dtextentry] = newtext(6,1,"Radius",vec2(DFs["Main",dframe]:getWidth(O)-125,30),vec2(80,20))
+        Dmisc["radius",dtextentry]:setNumeric(1)
+        Dmisc["radius",dtextentry]:modify()
+        
+        Btns["original",dbutton] = newbutton(7,1,"Load Original playlist",vec2(DFs["Main",dframe]:getWidth(O)-125,55),vec2(120,20))
+        Btns["clean",dbutton] = newbutton(8,1,"Load Clean playlist",vec2(DFs["Main",dframe]:getWidth(O)-125,80),vec2(120,20))
+        
+        Btns["Resume",dbutton] = newbutton(9,1,"Resume",vec2(DFs["Main",dframe]:getWidth(O)-125,105),vec2(80,20))
+        Btns["Pause",dbutton] = newbutton(10,1,"Pause",vec2(DFs["Main",dframe]:getWidth(O)-125,130),vec2(80,20))
+        
+        Dmisc["cursong",dlabel] = newlabel(11,1,"Current Song: None",vec2(DFs["Main",dframe]:getWidth(O),20),vec(255),vec2(2,DFs["Main",dframe]:getHeight(O)-20))
+        
+        Btns["drm",dbutton] = newbutton(12,1,"Drm toggle",vec2(DFs["Main",dframe]:getWidth(O)-210,55),vec2(80,20))
+        Btns["hover",dbutton] = newbutton(13,1,"Hover",vec2(DFs["Main",dframe]:getWidth(O)-210,80),vec2(80,20))
+        Btns["spin",dbutton] = newbutton(14,1,"Spin",vec2(DFs["Main",dframe]:getWidth(O)-210,105),vec2(80,20))
+        Btns["3D",dbutton] = newbutton(15,1,"3D",vec2(DFs["Main",dframe]:getWidth(O)-210,130),vec2(80,20))
+        Btns["bring",dbutton] = newbutton(16,1,"Bring",vec2(DFs["Main",dframe]:getWidth(O)-210,155),vec2(80,20))
+    #endif
+    
+    Time=time()
 }
 
 function playsong(Id:number){
+    if(E:getName() == "Retards radio mk.2"){
+        timer("main",250)
+    }
     Player:destroy()
     Player=webAudio(Urls[Id,string])
     Player:setPos(E:toWorld(vec(0,0,0)))
@@ -50,6 +90,10 @@ function playsong(Id:number){
     Player:setPlaybackRate(Settings["Playbackrate",number])
     Player:play()
     Vars["wait",number]=1
+    #ifdef dframe(number)
+        Dmisc["cursong",dlabel]:setText(format("Current Song: %s",Names[Id,string]))
+        Dmisc["cursong",dlabel]:modify()
+    #endif
 }
 
 function string getwatime(N:number){
@@ -67,6 +111,11 @@ switch(clkName()){
         Urls=GITFILELIB_output["Urls",table]
         Names=GITFILELIB_output["Names",table]
         Vars["Id",number]=randint(Urls:count())
+        local R=array()
+        foreach(_:number,V:string = Names){
+            R:pushString(V)
+        }
+        listadd(Dlvs["Songs",dlistview],R,1)
         if(Settings["PlayOnLoad",number]==1){
             playsong(Vars["Id",number])
             timer("main",250)
@@ -74,7 +123,9 @@ switch(clkName()){
     break
     case "main",
         if(Player:getLength()!=-1){
-            setName("Retards radio:["+Vars["Id",number]:toString()+"]"+Names[Vars["Id",number],string]+"["+getwatime(Player:getTime())+" | "+getwatime(Player:getLength())+"]")
+            if(canSetName()){
+                setName("Retards radio:["+Vars["Id",number]:toString()+"]"+Names[Vars["Id",number],string]+"["+getwatime(Player:getTime())+" | "+getwatime(Player:getLength())+"]")
+            }
             Vars["wait",number]=0
         }
         if(Player:getTime()==Player:getLength()&(Vars["wait",number]!=1)){
@@ -312,6 +363,153 @@ event chat(Chte:entity,_:string,_:number){
                 timer("printsongs",50)
                 Vars["songPcont",number]=0
             break
+            case "ramenu2",
+                #ifdef dframe(number)
+                DFs["Main",dframe]:setVisible(1)
+                DFs["Main",dframe]:modify()
+                #else
+                hint("Error: this server does not have E2VgioCore!",3)
+                #endif
+            break
         }
     }
 }
+
+#ifdef dframe(number)
+    event vguiClk(Ply:entity,Id:number,Val:table){
+        switch(Id){
+            case 2,
+                DFs["Main",dframe]:setVisible(0)
+                DFs["Main",dframe]:modify()
+            break
+            case 4,
+                local Index = Dlvs["Songs",dlistview]:getIndex(Ply)
+                if(Index>0){
+                    playsong(Index)
+                    Vars["Id",number]=Index
+                }
+                else{ hint("Select a song first.",3) }
+            break
+            case 5,
+                if(time()!=Time){
+                    Time=time()
+                    local Vol = Val["text",string]
+                    Settings["Volume",number]=Vol:toNumber()
+                    hint("Volume set to: "+Vol,3)
+                    Player:setVolume(Vol:toNumber())
+                    Player:update()
+                }
+            break
+            case 6,
+                if(time()!=Time){
+                    Time=time()
+                    local Rad = Val["text",string]
+                    Settings["Radius",number]=Rad:toNumber()
+                    hint("Radius set to: "+Rad,3)
+                    Player:setRadius(Rad:toNumber())
+                    Player:update()
+                }
+            break
+            case 9,
+                Player:play()
+            break
+            case 10,
+                Player:pause()
+            break
+            case 7,
+                Settings["Playlist",string]="https://raw.githubusercontent.com/anceient/webaudio-playlist/main/Urlsnames.txt"
+                Settings["Filepath",string]="Retardradio/retardsplaylist.txt"
+                gitcheck(Settings["Playlist",string],Settings["Filepath",string])
+                hint("Playing original playlist.",3)
+            break
+            case 8,
+                Settings["Playlist",string]="https://raw.githubusercontent.com/anceient/webaudio-playlist/main/retardsclean.txt"
+                Settings["Filepath",string]="Retardradio/retardsclean.txt"
+                gitcheck(Settings["Playlist",string],Settings["Filepath",string])
+                hint("Playing clean playlist.",3)
+            break
+            case 12,
+                E:propFreeze(1)
+                Vars["Drm",number]=!Vars["Drm",number]
+                if(Vars["Drm",number]){
+                    E:propNotSolid(1)
+                    hint("Denuvo Activated!",3)
+                }
+                else{
+                    E:propNotSolid(0)
+                    hint("Denuvo cracked!",3)
+                }
+            break
+            case 13,
+                Vars["Hover",number]=!Vars["Hover",number]
+                if(Vars["Hover",number]){
+                    hint("Radio hovering!",3)
+                    stoptimer("spin")
+                    Vars["Spinof",number]=0
+                    timer("hover",1)
+                }
+                else{
+                    hint("Rover falling!",3)
+                    stoptimer("hover")
+                }
+            break
+            case 14,
+                Vars["Spinof",number]=!Vars["Spinof",number]
+                if(Vars["Spinof",number]==1){
+                    Vars["Hovervec",vector]=E:pos()
+                    stoptimer("hover")
+                    Vars["Hover",number]=0
+                    timer("spin",1)
+                    hint("The Radio will spin in place",3)
+                }
+                else{
+                    stoptimer("spin")
+                    hint("I move now",3)
+                }
+            break
+            case 15,
+                Settings["3D",number]=!Settings["3D",number]
+                if(Settings["3D",number]==1){
+                    hint("3D audio activated...",3)
+                    Player:set3DEnabled(1)
+                    Player:update()
+                }
+                else{
+                    hint("3D audio deactivated...",3)
+                    Player:set3DEnabled(0)
+                    Player:update()
+                }
+            break
+            case 16,
+                E:propFreeze(1)
+                E:setPos(O:pos())
+                hint("Radio teleported.",3)
+            break
+        }
+    }
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
