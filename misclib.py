@@ -5,24 +5,61 @@ import sys
 import os
 import dearpygui.dearpygui as dpg
 
+###################################################################
+#========================Console functions========================#
+###################################################################
+
+def print_console(inp,color=[255,255,255],console_window='conwin'):
+    lastline = dpg.add_text(inp,wrap=dpg.get_item_width("conwin"), parent=console_window)
+    dpg.configure_item(lastline,color=color)
+    dpg.set_y_scroll(console_window, (dpg.get_y_scroll_max(console_window)+1)*1000000)
+
 #############################################################################
 #========================Winreg/resoulition checking========================#
 #############################################################################
 
-def get_registry(keys={'Default Theme':'gold','Tooltips':'True'},location=[r'SOFTWARE\\','retardsinc\\pytemplate']):
-    global soft,key
-    soft = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER,location[0])
-    key = winreg.CreateKey(soft,location[1])
-    ids=[]
-    [ids.append(i) for i in keys]
+class registry:
+    """
+    class for handleing registry loading and logging.\n
+    see get() for loading.
+    """
+    def __init__(self):
+        self.list=[] #This is the list the log info will be stored in
+        self.soft=None #init the soft/key values for winreg
+        self.key=None
+    
+    def get(self,keys:dict={'Default Theme':'gold','Tooltips':'True'},location:list=[r'SOFTWARE\\','retardsinc\\pytemplate']):
+        """
+        Loads a given registry location and returns [keys:dict,ids:list]\n
+        keys:dict a dict containing an id and a default value for that id,
+        if the id is not in the registry then it will be made with your default.\n
+        Location:list a list containing 2 strings the first you dont need to change,
+        the second should be that path to your registry.
+        """
+        self.soft = winreg.OpenKeyEx(winreg.HKEY_CURRENT_USER,location[0])
+        self.key = winreg.CreateKey(self.soft,location[1])
+        ids=[]
+        [ids.append(i) for i in keys]
 
-    for i in range(len(keys)):
-        try:
-            x=winreg.EnumValue(key,i)
-            keys[i] = x
-        except:
-            winreg.SetValueEx(key,ids[i],0,winreg.REG_SZ,keys[ids[i]])
-    return keys,ids
+        for i in range(len(keys)):
+            try:
+                x=winreg.EnumValue(self.key,i)
+                keys[i] = x
+                self.list.append([ids[i],'loaded'])
+            except Exception as e:
+                if 'No more data is available' in str(e): self.list.append([ids[i],'created'])
+                else: self.list.append([ids[i],'error'])
+                winreg.SetValueEx(self.key,ids[i],0,winreg.REG_SZ,keys[ids[i]])
+        return keys,ids
+
+    def print_log_terminal(self):
+        [print(i) for i in self.list]
+    
+    def print_log(self,console_window:str='conwin'):
+        for i in self.list:
+            if i[1]=='loaded': print_console(f'Loaded registry: {i[0]}.',color=[0,255,0],console_window=console_window)
+            elif i[1]=='created': print_console(f'Created registry: {i[0]}.',color=[0,255,255],console_window=console_window)
+            elif i[1]=='errored': print_console(f'Registry error: {i[0]}.',color=[255,0,0],console_window=console_window)
 
 is_4k_monitor = False #This varabial only exists because when windows scales up a program for a 4k monitor it fuckes up our custom menubar dragging system
 #so the fix is to just disable menubar dragging and reenable the default windows decorator(the bar at the top of a window that has the x button in it)
@@ -239,9 +276,3 @@ def update_viewport_size():
     dpg.set_viewport_width(w)
     dpg.set_viewport_height(h)
     dpg.set_item_pos('primary',[0,0])
-
-
-def print_console(inp,color=[255,255,255],console_window='conwin'):
-    lastline = dpg.add_text(inp, parent=console_window)
-    dpg.configure_item(lastline,color=color)
-    dpg.set_y_scroll(console_window, dpg.get_y_scroll_max(console_window)+1000)
